@@ -1,5 +1,6 @@
 [workspace]
 
 members = [
-    "crates/meme_lord_core"
+    "crates/meme_lord_core",
+    "crates/meme_lord_server"
 ]

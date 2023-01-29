@@ -24,6 +24,10 @@ impl Meme {
         }
     }
 
+    pub fn into_data(self) -> Vec<u8> {
+        self.data
+    }
+
     pub fn id(&self) -> &String {
         &self.details.id
     }

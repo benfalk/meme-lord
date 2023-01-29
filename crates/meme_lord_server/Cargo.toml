@@ -1,0 +1,17 @@
+[package]
+name = "meme_lord_server"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at:
+#   https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+meme_lord_core = { path = "../meme_lord_core", version = "0.1" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0" }
+actix-web = { version = "4" }
+actix-multipart = { version = "0.5.0" }
+sanitize-filename = { version = "0.4.0" }
+futures-util = { version = "0.3" }
+tokio = { version = "1", features = ["full"] }
