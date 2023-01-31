@@ -47,6 +47,10 @@ impl Meme {
     pub fn data(&self) -> &Vec<u8> {
         &self.data
     }
+
+    pub fn split(self) -> (Vec<u8>, MemeDetails) {
+        (self.data, self.details)
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
