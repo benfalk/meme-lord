@@ -1,9 +1,9 @@
 mod handler;
-use crate::state::State;
+use crate::{state::State, config::Config};
 use actix_web::{web, App, HttpServer};
 
-pub async fn run() -> std::io::Result<()> {
-    let state = State::default();
+pub async fn run(config: Config) -> std::io::Result<()> {
+    let state = State::new(config);
 
     HttpServer::new(move || {
         App::new()

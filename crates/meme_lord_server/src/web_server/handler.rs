@@ -5,15 +5,11 @@ use actix_web::{web, Error, HttpResponse, Responder};
 use meme_lord_core::{Manifest, Store};
 
 pub async fn manifest(data: web::Data<State>) -> impl Responder {
-    let server = "http://localhost:8080/".to_owned();
-    let manifest = Manifest::new(server, &data.store);
+    let manifest = Manifest::new(data.config.server.clone(), &data.store);
     serde_json::to_string(&manifest).unwrap()
 }
 
-pub async fn add_meme(
-    data: Multipart,
-    state: web::Data<State>,
-) -> Result<impl Responder, Error> {
+pub async fn add_meme(data: Multipart, state: web::Data<State>) -> Result<impl Responder, Error> {
     let input = MemeInput::try_from(data).await?;
 
     if input.is_valid() {

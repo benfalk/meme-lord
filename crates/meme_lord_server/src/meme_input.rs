@@ -1,8 +1,8 @@
 use actix_multipart::{Field, Multipart};
 use futures_util::TryStreamExt;
+use meme_lord_core::{Meme, MemeDetails};
 use serde::Deserialize;
 use std::{fmt::Debug, io::Write};
-use meme_lord_core::{Meme, MemeDetails};
 
 type AnyError = Box<dyn std::error::Error>;
 
@@ -32,6 +32,16 @@ pub struct MemeDetailsInput {
     caption: Option<String>,
 }
 
+impl MemeDetailsInput {
+    fn build_details(self, id: String) -> MemeDetails {
+        MemeDetails {
+            id,
+            meta: self.meta.unwrap_or_default(),
+            caption: self.caption.unwrap_or_default(),
+        }
+    }
+}
+
 impl MemeInput {
     pub async fn try_from(mut data: Multipart) -> Result<Self, AnyError> {
         let mut input = Self::default();
@@ -58,7 +68,8 @@ impl MemeInput {
     }
 
     pub fn to_meme(self) -> Meme {
-        Meme::new(self.id.unwrap(), self.data.unwrap())
+        let details = self.details.build_details(self.id.unwrap());
+        Meme::new_with_details(self.data.unwrap(), details)
     }
 }
 

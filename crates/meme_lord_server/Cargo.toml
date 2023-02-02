@@ -15,3 +15,4 @@ actix-multipart = { version = "0.5.0" }
 sanitize-filename = { version = "0.4.0" }
 futures-util = { version = "0.3" }
 tokio = { version = "1", features = ["full"] }
+clap = { version = "4.1", features = ["derive"] }

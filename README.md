@@ -29,7 +29,9 @@ the progress you can perform the following steps:
    ```
 3. Upload a meme
    ```
-   curl -F file=@assets/im-something-of-a-meme-lord-myself.jpg localhost:8080/add
+   curl -F file=@assets/im-something-of-a-meme-lord-myself.jpg \
+        -F details='{"meta":"spider man meme lord scientist"}' \
+        localhost:8080/add
    ```
 4. Verify it's in the manifest
    ```

@@ -1,9 +1,19 @@
 use serde::{Deserialize, Serialize};
+use std::fmt::Debug;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Meme {
     data: Vec<u8>,
     details: MemeDetails,
+}
+
+impl Debug for Meme {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Meme")
+            .field("data", &self.data.len())
+            .field("details", &self.details)
+            .finish()
+    }
 }
 
 impl Meme {
