@@ -1,7 +1,7 @@
 use crate::meme_input::MemeInput;
 use crate::state::State;
 use actix_multipart::Multipart;
-use actix_web::{web, Error, HttpResponse, Responder};
+use actix_web::{web, Error, HttpRequest, HttpResponse, Responder};
 use meme_lord_core::{Manifest, Store};
 
 pub async fn manifest(data: web::Data<State>) -> impl Responder {
@@ -9,7 +9,15 @@ pub async fn manifest(data: web::Data<State>) -> impl Responder {
     serde_json::to_string(&manifest).unwrap()
 }
 
-pub async fn add_meme(data: Multipart, state: web::Data<State>) -> Result<impl Responder, Error> {
+pub async fn add_meme(
+    data: Multipart,
+    req: HttpRequest,
+    state: web::Data<State>,
+) -> Result<impl Responder, Error> {
+    if !state.can_add_meme(&req) {
+        return Ok(HttpResponse::MethodNotAllowed());
+    }
+
     let input = MemeInput::try_from(data).await?;
 
     if input.is_valid() {
