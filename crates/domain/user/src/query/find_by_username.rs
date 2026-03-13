@@ -13,15 +13,16 @@ pub enum FindByUsernameError {
     RepoError(crate::port::user_repo::GetUserByNameError),
 }
 
-impl<RU, PH> Query<RU, PH> for FindByUsername
+impl<UR, PH, EP> Query<UR, PH, EP> for FindByUsername
 where
-    RU: UserRepo,
+    UR: UserRepo,
     PH: PasswordHasher,
+    EP: EventPublisher,
 {
     type Value = Option<User>;
     type Error = FindByUsernameError;
 
-    async fn query(self, env: &Env<RU, PH>) -> Result<Self::Value, Self::Error> {
+    async fn query(self, env: &Env<UR, PH, EP>) -> Result<Self::Value, Self::Error> {
         env.user_repo
             .get_user_by_name(&self.username)
             .await

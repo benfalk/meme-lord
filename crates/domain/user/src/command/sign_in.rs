@@ -17,31 +17,39 @@ pub enum SignInError {
     Hash(#[from] crate::port::password_hasher::HashError),
 
     #[error(transparent)]
-    RepoError(crate::port::user_repo::GetUserAndHashByNameError),
+    Repo(crate::port::user_repo::GetUserAndHashByNameError),
+
+    #[error(transparent)]
+    Publish(#[from] crate::port::event_publisher::PublishError),
 }
 
-impl<UR, PH> Command<UR, PH> for SignIn
+impl<UR, PH, EP> Command<UR, PH, EP> for SignIn
 where
     UR: UserRepo,
     PH: PasswordHasher,
+    EP: EventPublisher,
 {
     type Error = SignInError;
     type Value = User;
 
-    async fn exec(self, env: &Env<UR, PH>) -> Result<Self::Value, Self::Error> {
+    async fn exec(self, env: &Env<UR, PH, EP>) -> Result<Self::Value, Self::Error> {
         let (user, password) = env
             .user_repo
             .get_user_and_hash_by_name(&self.username)
             .await
-            .map_err(SignInError::RepoError)?
+            .map_err(SignInError::Repo)?
             .ok_or(SignInError::InvalidUsernameOrPassword)?;
 
         env.password_hasher
             .verify(&self.password, &password.hash)
             .await
             .map_err(SignInError::Hash)?
-            .then_some(user)
-            .ok_or(SignInError::InvalidUsernameOrPassword)
+            .then_some(())
+            .ok_or(SignInError::InvalidUsernameOrPassword)?;
+
+        env.event_publisher.user_signed_in(user.id).await?;
+
+        Ok(user)
     }
 }
 
@@ -56,16 +64,17 @@ mod tests {
     #[tokio::test]
     async fn happy_path(mut mock_env: MockEnv) {
         let username = Username::new("test-user");
+        let user_id = UserId::generate();
         let sign_in = SignIn {
             username: username.clone(),
             password: Password::from("test-password"),
         };
         let user = User {
-            id: UserId::generate(),
+            id: user_id,
             username: username.clone(),
         };
         let hash = UserPasswordHash {
-            user_id: user.id,
+            user_id,
             hash: vec![1, 2, 3].into(),
         };
         let user_and_hash = (user.clone(), hash.clone());
@@ -88,6 +97,12 @@ mod tests {
                 true
             })
             .returning(|_, _| Box::pin(async { Ok(true) }));
+
+        mock_env
+            .event_publisher
+            .expect_user_signed_in()
+            .withf(move |given_user_id| *given_user_id == user_id)
+            .returning(|_| Box::pin(async { Ok(()) }));
 
         let returned_user = sign_in.exec(&mock_env).await.unwrap();
         assert_eq!(returned_user, user);

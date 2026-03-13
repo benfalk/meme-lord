@@ -17,18 +17,22 @@ pub enum SignUpError {
     Hash(#[from] crate::port::password_hasher::HashError),
 
     #[error(transparent)]
-    InsertError(crate::port::user_repo::InsertUserWithHashError),
+    Insert(crate::port::user_repo::InsertUserWithHashError),
+
+    #[error(transparent)]
+    Publish(#[from] crate::port::event_publisher::PublishError),
 }
 
-impl<UR, PH> Command<UR, PH> for SignUp
+impl<UR, PH, EP> Command<UR, PH, EP> for SignUp
 where
     UR: UserRepo,
     PH: PasswordHasher,
+    EP: EventPublisher,
 {
     type Error = SignUpError;
     type Value = User;
 
-    async fn exec(self, env: &Env<UR, PH>) -> Result<Self::Value, Self::Error> {
+    async fn exec(self, env: &Env<UR, PH, EP>) -> Result<Self::Value, Self::Error> {
         let hash = env.password_hasher.hash(&self.password).await?;
         let user_id = UserId::generate();
         let user = User {
@@ -37,6 +41,7 @@ where
         };
         let hash = UserPasswordHash { user_id, hash };
         env.user_repo.insert_user_with_hash(&user, &hash).await?;
+        env.event_publisher.user_created(user.id).await?;
         Ok(user)
     }
 }
@@ -51,7 +56,7 @@ mod impls {
                 InsertUserWithHashError::NameTaken { username } => {
                     Self::UsernameTaken { username }
                 }
-                other => Self::InsertError(other),
+                other => Self::Insert(other),
             }
         }
     }
@@ -87,6 +92,11 @@ mod tests {
                 true
             })
             .returning(|_, _| Box::pin(async move { Ok(()) }));
+
+        mock_env
+            .event_publisher
+            .expect_user_created()
+            .returning(|_| Box::pin(async { Ok(()) }));
 
         let user = sign_up.exec(&mock_env).await.unwrap();
         assert_eq!(user.username, "new_user");

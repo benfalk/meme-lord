@@ -28,6 +28,13 @@ pub enum InsertUserWithHashError {
 }
 
 #[derive(Debug, ::thiserror::Error)]
+#[error("get hash by user id {user_id}: {source}")]
+pub struct GetHashByUserIdError {
+    pub user_id: UserId,
+    pub source: Box<dyn ::std::error::Error + Send + Sync>,
+}
+
+#[derive(Debug, ::thiserror::Error)]
 #[error("get user and hash by name {uname}: {source}")]
 pub struct GetUserAndHashByNameError {
     pub uname: String,
@@ -50,6 +57,7 @@ pub enum Error {
     InsertUserWithHash(#[from] InsertUserWithHashError),
     GetUserAndHashByName(#[from] GetUserAndHashByNameError),
     UpdateUserPasswordHash(#[from] UpdateUserPasswordHashError),
+    GehHashByUserId(#[from] GetHashByUserIdError),
 }
 
 #[cfg_attr(any(test, feature = "testing"), ::mockall::automock)]
@@ -82,6 +90,11 @@ pub trait UserRepo: Send + Sync {
         &self,
         hash: &UserPasswordHash,
     ) -> impl Future<Output = Result<(), UpdateUserPasswordHashError>> + Send;
+
+    fn get_hash_by_user_id(
+        &self,
+        user_id: &UserId,
+    ) -> impl Future<Output = Result<Option<UserPasswordHash>, GetHashByUserIdError>> + Send;
 }
 
 /// User Repository Tests
@@ -166,6 +179,16 @@ pub async fn test_adapter<R: UserRepo>(adapter: &R) -> Result<(), Error> {
     assert!(
         matches!(err, InsertUserWithHashError::Duplicate { id, username } if id == user.id && username == user.username),
         "inserting a duplicate user should fail with the correct id and name"
+    );
+
+    let fetched_hash = adapter
+        .get_hash_by_user_id(&user.id)
+        .await?
+        .expect("a hash by user id");
+
+    assert_eq!(
+        &fetched_hash, &hash,
+        "expected hash by user id after insert"
     );
 
     let updated_hash = UserPasswordHash {

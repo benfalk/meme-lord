@@ -106,6 +106,14 @@ impl UserRepo for InMemoryUserRepo {
         existing.hash = hash.hash.clone();
         Ok(())
     }
+
+    async fn get_hash_by_user_id(
+        &self,
+        user_id: &UserId,
+    ) -> Result<Option<UserPasswordHash>, GetHashByUserIdError> {
+        let inner = self.inner.read().await;
+        Ok(inner.hashes.get(user_id).cloned())
+    }
 }
 
 #[cfg(test)]
