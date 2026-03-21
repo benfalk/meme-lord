@@ -1,26 +1,24 @@
 [package]
-name = "user"
+name = "meme"
 version = "0.1.0"
 edition = "2024"
 
 [features]
-testing = ["dep:mockall", "fake/derive", "identity/testing"]
-argon2-hasher = ["argon2/alloc", "argon2/std"]
+testing = ["dep:mockall", "fake/derive"]
 
 [dependencies]
 anyhow = { workspace = true }
 bon = { workspace = true }
+bytesize = { workspace = true }
 derive_more = { workspace = true, features = ["full"] }
 jiff = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
+url = { workspace = true }
 uuid = { workspace = true, features = ["v7"] }
 
-# Optional dependencies
-argon2 = { workspace = true, optional = true }
-
 # Optional dependencies for testing
-fake = { workspace = true, optional = true, features = ["derive"] }
+fake = { workspace = true, optional = true, features = ["derive", "url"] }
 mockall = { workspace = true, optional = true }
 
 # Internal dependencies
@@ -29,5 +27,5 @@ identity = { path = "../identity" }
 [dev-dependencies]
 mockall = { workspace = true }
 rstest = { workspace = true }
-fake = { workspace = true, features = ["derive"] }
+fake = { workspace = true, features = ["derive", "url"] }
 identity = { path = "../identity", features = ["testing"] }

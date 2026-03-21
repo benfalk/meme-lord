@@ -1,20 +1,21 @@
 [workspace]
 resolver = "3"
-members = ["crates/domain/user"]
+members = ["crates/domain/identity", "crates/domain/meme", "crates/domain/user"]
 
 [workspace.dependencies]
 
 ###################
 # General Puprose #
 #############################################################
+anyhow = { version = "1.0.0" }
 bon = { version = "3.9.0" }
+clap = { version = "4.5.0" }
+derive_more = { version = "2.1.0" }
+dotenvy = { version = "0.15.0" }
+paste = { version = "1.0.0" }
+sqlx = { version = "0.8.0" }
 thiserror = { version = "2.0.0" }
 tokio = { version = "1.49.0" }
-clap = { version = "4.5.0" }
-sqlx = { version = "0.8.0" }
-dotenvy = { version = "0.15.0" }
-derive_more = { version = "2.1.0" }
-anyhow = { version = "1.0.0" }
 
 #########################
 # Security & Encription #
@@ -24,18 +25,20 @@ argon2 = { version = "0.5.3" }
 #####################
 # Tracing & Logging #
 #############################################################
-tracing = { version = "0.1.0" }
-tracing-subscriber = { version = "0.3.0" }
-tracing-appender = { version = "0.2.0" }
-tracing-opentelemetry = { version = "0.32.0" }
 opentelemetry = { version = "0.31", features = ["trace"] }
 opentelemetry-jaeger = { version = "0.22" }
+tracing = { version = "0.1.0" }
+tracing-appender = { version = "0.2.0" }
+tracing-opentelemetry = { version = "0.32.0" }
+tracing-subscriber = { version = "0.3.0" }
 
 ###################
 # Addtional Types #
 #############################################################
-uuid = { version = "1.21.0" }
+bytesize = { version = "2.3.0" }
 jiff = { version = "0.2.0" }
+url = { version = "2.5.0" }
+uuid = { version = "1.21.0" }
 
 #####################
 # (De)Serialization #
@@ -46,7 +49,7 @@ serde_json = { version = "1.0.0" }
 ####################
 # Dev Dependencies #
 #############################################################
-rstest = "0.26.0"
-mockall = "0.14.0"
-googletest = "0.14.0"
 fake = "4.4.0"
+googletest = "0.14.0"
+mockall = "0.14.0"
+rstest = "0.26.0"

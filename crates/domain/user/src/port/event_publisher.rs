@@ -7,26 +7,31 @@ pub struct PublishError {
     pub event: Event,
 }
 
-type PublishSuccess = Result<(), PublishError>;
+pub type PublishResult = Result<(), PublishError>;
 
 #[cfg_attr(any(test, feature = "testing"), ::mockall::automock)]
 pub trait EventPublisher: Send + Sync {
-    fn publish(&self, event: Event) -> impl Future<Output = PublishSuccess> + Send;
+    fn publish(&self, event: Event) -> impl Future<Output = PublishResult> + Send;
 
     fn user_created(
         &self,
         user_id: UserId,
-    ) -> impl Future<Output = PublishSuccess> + Send {
-        async move { self.publish(Event::UserCreated { user_id }).await }
+    ) -> impl Future<Output = PublishResult> + Send {
+        async move {
+            self.publish(Event {
+                timestamp: user_id.created_at(),
+                message: Message::UserCreated { user_id },
+            })
+            .await
+        }
     }
 
     fn user_signed_in(
         &self,
         user_id: UserId,
-    ) -> impl Future<Output = PublishSuccess> + Send {
+    ) -> impl Future<Output = PublishResult> + Send {
         async move {
-            let timestamp = Timestamp::now();
-            self.publish(Event::UserSignedIn { user_id, timestamp })
+            self.publish(Event::new(Message::UserSignedIn { user_id }))
                 .await
         }
     }
@@ -34,26 +39,33 @@ pub trait EventPublisher: Send + Sync {
     fn user_password_changed(
         &self,
         user_id: UserId,
-    ) -> impl Future<Output = PublishSuccess> + Send {
+    ) -> impl Future<Output = PublishResult> + Send {
         async move {
-            let timestamp = Timestamp::now();
-            self.publish(Event::UserPasswordChanged { user_id, timestamp })
+            self.publish(Event::new(Message::UserPasswordChanged { user_id }))
                 .await
         }
     }
 }
 
 #[derive(Debug, Clone)]
-pub enum Event {
-    UserCreated {
-        user_id: UserId,
-    },
-    UserSignedIn {
-        user_id: UserId,
-        timestamp: Timestamp,
-    },
-    UserPasswordChanged {
-        user_id: UserId,
-        timestamp: Timestamp,
-    },
+pub struct Event {
+    pub timestamp: Timestamp,
+    pub message: Message,
+}
+
+#[derive(Debug, Clone)]
+#[non_exhaustive]
+pub enum Message {
+    UserCreated { user_id: UserId },
+    UserSignedIn { user_id: UserId },
+    UserPasswordChanged { user_id: UserId },
+}
+
+impl Event {
+    pub fn new(message: Message) -> Self {
+        Self {
+            timestamp: Timestamp::now(),
+            message,
+        }
+    }
 }

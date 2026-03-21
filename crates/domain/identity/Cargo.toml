@@ -1,0 +1,21 @@
+[package]
+name = "identity"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+testing = ["fake/derive"]
+
+[dependencies]
+jiff = { workspace = true }
+thiserror = { workspace = true }
+uuid = { workspace = true, features = ["v7"] }
+paste = { workspace = true }
+
+# Optional dependencies for testing
+fake = { workspace = true, optional = true, features = ["derive"] }
+
+[dev-dependencies]
+mockall = { workspace = true }
+rstest = { workspace = true }
+fake = { workspace = true, features = ["derive"] }
