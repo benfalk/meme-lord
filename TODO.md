@@ -19,14 +19,14 @@
       entities from different domains. This will allow us to have a single
       source of truth for these ids and prevent crates from needing to depend
       on each other just to access these ids.
-- [ ] Create a `meme` domain that allows users to create memes with captions
+- [X] Create a `meme` domain that allows users to create memes with captions
       and images. This should include commands for creating, updating, and
       deleting memes. It also needs queries by various criteria (e.g. by user,
       by caption, etc.).
-  - [ ] Scaffold out a new domain with the same basic starting structure as
+  - [X] Scaffold out a new domain with the same basic starting structure as
       the `user` domain.
-    - [ ] Upload port to store memes in some kind of storage
-    - [ ] Repository port for memes
+    - [X] Upload port to store memes in some kind of storage
+    - [X] Repository port for memes
   - [ ] What crates are best to work with images in Rust?  We need to be able
         to pull data from these images to extract metadata as well as provide
         some editing capabilities such as resizing, cropping, and adding text

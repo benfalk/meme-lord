@@ -1,4 +1,4 @@
-use crate::port::file_uploader::*;
+use crate::port::file_manager::*;
 use crate::types::{MemePath, RawFile};
 use ::std::collections::HashMap;
 use ::std::sync::Arc;
@@ -65,7 +65,7 @@ mod tests {
     #[tokio::test]
     async fn passes_port_tests() {
         let manager = InMemoryFileManager::default();
-        crate::port::file_uploader::test_file_manager(&manager)
+        crate::port::file_manager::test_file_manager(&manager)
             .await
             .expect("to pass all of the filer manager tests");
     }

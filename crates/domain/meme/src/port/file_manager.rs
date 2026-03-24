@@ -1,5 +1,6 @@
 use crate::types::{MemePath, RawFile};
 
+#[cfg_attr(any(test, feature = "testing"), ::mockall::automock)]
 pub trait FileManager: Send + Sync {
     fn upload(
         &self,
