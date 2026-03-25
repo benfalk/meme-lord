@@ -8,16 +8,20 @@ pub struct DownloadMemeFileById {
     pub meme_id: MemeId,
 }
 
-impl<FM, MR, ID> Query<FM, MR, ID> for DownloadMemeFileById
+impl<FM, MR, ID, EP> Query<FM, MR, ID, EP> for DownloadMemeFileById
 where
     FM: FileManager,
     MR: MemeRepo,
     ID: IdGenerator,
+    EP: EventPublisher,
 {
     type Value = RawFile;
     type Error = DownloadMemeFileByIdError;
 
-    async fn query(self, env: &Env<FM, MR, ID>) -> Result<Self::Value, Self::Error> {
+    async fn query(
+        self,
+        env: &Env<FM, MR, ID, EP>,
+    ) -> Result<Self::Value, Self::Error> {
         let meme = env
             .meme_repo
             .fetch_by_id(&self.meme_id)

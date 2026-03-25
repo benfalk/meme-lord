@@ -8,16 +8,20 @@ pub struct DeleteMemeByOwner {
     pub owner_id: UserId,
 }
 
-impl<FM, MR, ID> Command<FM, MR, ID> for DeleteMemeByOwner
+impl<FM, MR, ID, EP> Command<FM, MR, ID, EP> for DeleteMemeByOwner
 where
     FM: FileManager,
     MR: MemeRepo,
     ID: IdGenerator,
+    EP: EventPublisher,
 {
     type Value = ();
     type Error = DeleteMemeByOwnerError;
 
-    async fn exec(self, env: &Env<FM, MR, ID>) -> Result<Self::Value, Self::Error> {
+    async fn exec(
+        self,
+        env: &Env<FM, MR, ID, EP>,
+    ) -> Result<Self::Value, Self::Error> {
         let meme = env.meme_repo.fetch_by_id(&self.meme_id).await.map_err(
             |err| match err {
                 crate::port::meme_repo::FetchByIdError::MemeNotFound { id } => {
@@ -48,7 +52,11 @@ where
                 Err(DeleteMemeByOwnerError::FileManagerDelete(file_manager))
             }
             (Ok(_), Err(repo)) => Err(DeleteMemeByOwnerError::RepoDelete(repo)),
-        }
+        }?;
+
+        env.event_publisher.meme_deleted(meme.id).await?;
+
+        Ok(())
     }
 }
 
@@ -69,6 +77,8 @@ pub enum DeleteMemeByOwnerError {
     RepoDelete(#[from] crate::port::meme_repo::DeleteByIdMemeError),
     #[error(transparent)]
     FetchById(#[from] crate::port::meme_repo::FetchByIdError),
+    #[error(transparent)]
+    Event(#[from] crate::port::event_publisher::PublishError),
 }
 
 #[cfg(test)]
@@ -115,6 +125,12 @@ mod tests {
         mock_env
             .meme_repo
             .expect_delete()
+            .withf(move |id| *id == meme_id)
+            .return_once(|_| Box::pin(async { Ok(()) }));
+
+        mock_env
+            .event_publisher
+            .expect_meme_deleted()
             .withf(move |id| *id == meme_id)
             .return_once(|_| Box::pin(async { Ok(()) }));
 

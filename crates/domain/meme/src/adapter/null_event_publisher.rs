@@ -1,4 +1,4 @@
-pub use crate::port::event_publisher::*;
+use crate::port::event_publisher::*;
 
 #[derive(Debug, Clone, Default)]
 #[non_exhaustive]

@@ -10,16 +10,20 @@ pub struct CreateMeme {
     pub owner_id: UserId,
 }
 
-impl<FM, MR, ID> Command<FM, MR, ID> for CreateMeme
+impl<FM, MR, ID, EP> Command<FM, MR, ID, EP> for CreateMeme
 where
     FM: FileManager,
     MR: MemeRepo,
     ID: IdGenerator,
+    EP: EventPublisher,
 {
     type Value = Meme;
     type Error = CreateMemeError;
 
-    async fn exec(self, env: &Env<FM, MR, ID>) -> Result<Self::Value, Self::Error> {
+    async fn exec(
+        self,
+        env: &Env<FM, MR, ID, EP>,
+    ) -> Result<Self::Value, Self::Error> {
         let meme = Meme {
             id: env.id_generator.generate_meme_id().await?,
             owner_id: self.owner_id,
@@ -47,7 +51,7 @@ where
             }),
         }?;
 
-        // Right here is where we can publish an event if we want to
+        env.event_publisher.meme_created(&meme).await?;
 
         Ok(meme)
     }
@@ -75,6 +79,9 @@ pub enum CreateMemeError {
         insert: crate::port::meme_repo::InsertMemeError,
         upload_revert: Option<crate::port::file_manager::DeleteError>,
     },
+
+    #[error(transparent)]
+    Event(#[from] crate::port::event_publisher::PublishError),
 }
 
 #[cfg(test)]
@@ -114,6 +121,17 @@ mod tests {
         mock_env
             .meme_repo
             .expect_insert()
+            .withf(move |meme| {
+                meme.id == meme_id
+                    && meme.owner_id == owner_id
+                    && meme.path == "test-meme.jpg"
+                    && meme.file_size == ByteSize::b(3)
+            })
+            .return_once(|_| Box::pin(async { Ok(()) }));
+
+        mock_env
+            .event_publisher
+            .expect_meme_created()
             .withf(move |meme| {
                 meme.id == meme_id
                     && meme.owner_id == owner_id

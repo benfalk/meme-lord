@@ -27,6 +27,7 @@
       the `user` domain.
     - [X] Upload port to store memes in some kind of storage
     - [X] Repository port for memes
+    - [X] Events for memes
   - [ ] What crates are best to work with images in Rust?  We need to be able
         to pull data from these images to extract metadata as well as provide
         some editing capabilities such as resizing, cropping, and adding text
