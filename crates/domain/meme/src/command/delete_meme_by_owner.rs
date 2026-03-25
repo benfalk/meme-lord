@@ -106,6 +106,7 @@ mod tests {
                     Ok(Meme {
                         id: meme_id,
                         owner_id,
+                        caption: None,
                         path: "test.jpg".into(),
                         file_size: ByteSize(123),
                     })

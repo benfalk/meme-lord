@@ -1,4 +1,4 @@
-use crate::types::{ByteSize, MemeId, MemePath};
+use crate::types::{ByteSize, MemeCaption, MemeId, MemePath};
 use ::identity::UserId;
 
 /// This is a reprsentation of a `meme` in the system. It contains all the
@@ -25,6 +25,7 @@ pub struct Meme {
     pub id: MemeId,
     pub owner_id: UserId,
     pub path: MemePath,
+    pub caption: Option<MemeCaption>,
     pub file_size: ByteSize,
 }
 
@@ -40,6 +41,7 @@ mod impl_fake {
                 owner_id: Faker.fake_with_rng(rng),
                 path: Faker.fake_with_rng(rng),
                 file_size: ByteSize(rng.random_range(8000..250_000_000)),
+                caption: Faker.fake_with_rng(rng),
             }
         }
     }

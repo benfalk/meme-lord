@@ -1,6 +1,6 @@
 use super::prelude::*;
 use crate::entity::Meme;
-use crate::types::{ByteSize, MemePath, RawFile};
+use crate::types::{ByteSize, MemeCaption, MemePath, RawFile};
 use ::identity::UserId;
 
 #[derive(::derive_more::Debug, Clone, PartialEq, Eq)]
@@ -8,6 +8,7 @@ pub struct CreateMeme {
     pub raw_file: RawFile,
     pub path: MemePath,
     pub owner_id: UserId,
+    pub caption: Option<MemeCaption>,
 }
 
 impl<FM, MR, ID, EP> Command<FM, MR, ID, EP> for CreateMeme
@@ -28,6 +29,7 @@ where
             id: env.id_generator.generate_meme_id().await?,
             owner_id: self.owner_id,
             path: self.path,
+            caption: self.caption,
             file_size: ByteSize::b(self.raw_file.len() as u64),
         };
 
@@ -99,6 +101,7 @@ mod tests {
         let cmd = CreateMeme {
             owner_id,
             raw_file: RawFile::from(vec![0, 1, 2]),
+            caption: Some("a test meme".into()),
             path: MemePath::from("test-meme.jpg"),
         };
 
@@ -125,6 +128,8 @@ mod tests {
                 meme.id == meme_id
                     && meme.owner_id == owner_id
                     && meme.path == "test-meme.jpg"
+                    && meme.caption.as_ref().map(|c| c.as_str())
+                        == Some("a test meme")
                     && meme.file_size == ByteSize::b(3)
             })
             .return_once(|_| Box::pin(async { Ok(()) }));
@@ -146,5 +151,9 @@ mod tests {
         assert_eq!(meme.owner_id, owner_id);
         assert_eq!(meme.path, "test-meme.jpg");
         assert_eq!(meme.file_size, ByteSize::b(3));
+        assert_eq!(
+            meme.caption.as_ref().map(|c| c.as_str()),
+            Some("a test meme")
+        );
     }
 }
