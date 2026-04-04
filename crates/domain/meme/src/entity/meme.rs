@@ -32,10 +32,10 @@ pub struct Meme {
 #[cfg(any(test, feature = "testing"))]
 mod impl_fake {
     use super::*;
-    use ::fake::{Dummy, Fake, Faker, Rng};
+    use ::fake::{Dummy, Fake, Faker, RngExt};
 
     impl Dummy<Faker> for Meme {
-        fn dummy_with_rng<R: Rng + ?Sized>(_config: &Faker, rng: &mut R) -> Self {
+        fn dummy_with_rng<R: RngExt + ?Sized>(_config: &Faker, rng: &mut R) -> Self {
             Self {
                 id: Faker.fake_with_rng(rng),
                 owner_id: Faker.fake_with_rng(rng),

@@ -34,10 +34,10 @@ mod impls {
 #[cfg(any(test, feature = "testing"))]
 mod impl_fake {
     use super::*;
-    use ::fake::{Dummy, Fake, Faker, Rng, faker};
+    use ::fake::{Dummy, Fake, Faker, RngExt, faker};
 
     impl Dummy<Faker> for Password {
-        fn dummy_with_rng<R: Rng + ?Sized>(_: &Faker, rng: &mut R) -> Self {
+        fn dummy_with_rng<R: RngExt + ?Sized>(_: &Faker, rng: &mut R) -> Self {
             let username: String =
                 faker::internet::en::Password(18..25).fake_with_rng(rng);
             Self::from(username)

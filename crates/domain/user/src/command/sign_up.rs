@@ -23,25 +23,20 @@ pub enum SignUpError {
     Publish(#[from] crate::port::event_publisher::PublishError),
 }
 
-impl<UR, PH, EP> Command<UR, PH, EP> for SignUp
-where
-    UR: UserRepo,
-    PH: PasswordHasher,
-    EP: EventPublisher,
-{
+impl Command for SignUp {
     type Error = SignUpError;
     type Value = User;
 
-    async fn exec(self, env: &Env<UR, PH, EP>) -> Result<Self::Value, Self::Error> {
-        let hash = env.password_hasher.hash(&self.password).await?;
+    async fn exec(self, env: &impl EnvExt) -> Result<Self::Value, Self::Error> {
+        let hash = env.password_hasher().hash(&self.password).await?;
         let user_id = UserId::generate();
         let user = User {
             id: user_id,
             username: self.username,
         };
         let hash = UserPasswordHash { user_id, hash };
-        env.user_repo.insert_user_with_hash(&user, &hash).await?;
-        env.event_publisher.user_created(user.id).await?;
+        env.user_repo().insert_user_with_hash(&user, &hash).await?;
+        env.event_publisher().user_created(user.id).await?;
         Ok(user)
     }
 }

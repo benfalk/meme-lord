@@ -13,17 +13,12 @@ pub enum FindByIdError {
     RepoError(crate::port::user_repo::GetUserByIdError),
 }
 
-impl<UR, PH, EP> Query<UR, PH, EP> for FindById
-where
-    UR: UserRepo,
-    PH: PasswordHasher,
-    EP: EventPublisher,
-{
+impl Query for FindById {
     type Value = Option<User>;
     type Error = FindByIdError;
 
-    async fn query(self, env: &Env<UR, PH, EP>) -> Result<Self::Value, Self::Error> {
-        env.user_repo
+    async fn query(self, env: &impl EnvExt) -> Result<Self::Value, Self::Error> {
+        env.user_repo()
             .get_user_by_id(&self.id)
             .await
             .map_err(FindByIdError::RepoError)

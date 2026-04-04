@@ -58,10 +58,10 @@ mod trait_impls {
 #[cfg(any(test, feature = "testing"))]
 mod impl_fake {
     use super::*;
-    use ::fake::{Dummy, Fake, Faker, Rng, faker};
+    use ::fake::{Dummy, Fake, Faker, RngExt, faker};
 
     impl Dummy<Faker> for Username {
-        fn dummy_with_rng<R: Rng + ?Sized>(_: &Faker, rng: &mut R) -> Self {
+        fn dummy_with_rng<R: RngExt + ?Sized>(_: &Faker, rng: &mut R) -> Self {
             let username: String =
                 faker::internet::en::Username().fake_with_rng(rng);
             Self::new(username)

@@ -1,5 +1,5 @@
 use crate::port::id_generator::*;
-use crate::types::MemeId;
+use crate::types::{MemeId, TagId};
 
 #[derive(Debug, Default)]
 #[non_exhaustive]
@@ -8,6 +8,10 @@ pub struct StdIdGenerator;
 impl IdGenerator for StdIdGenerator {
     async fn generate_meme_id(&self) -> Result<MemeId, GenerateMemeIdError> {
         Ok(MemeId::generate())
+    }
+
+    async fn generate_tag_id(&self) -> Result<TagId, GenerateTagIdError> {
+        Ok(TagId::generate())
     }
 }
 

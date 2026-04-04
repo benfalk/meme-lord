@@ -25,7 +25,7 @@ mockall = { workspace = true, optional = true }
 identity = { path = "../identity" }
 
 [dev-dependencies]
-mockall = { workspace = true }
-rstest = { workspace = true }
 fake = { workspace = true, features = ["derive", "url"] }
 identity = { path = "../identity", features = ["testing"] }
+mockall = { workspace = true }
+rstest = { workspace = true }

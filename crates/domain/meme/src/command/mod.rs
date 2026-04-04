@@ -6,5 +6,5 @@ mod prelude {
     pub(crate) use crate::port::file_manager::FileManager;
     pub(crate) use crate::port::id_generator::IdGenerator;
     pub(crate) use crate::port::meme_repo::MemeRepo;
-    pub(crate) use crate::sevice::{Command, Env};
+    pub(crate) use crate::sevice::{Command, EnvExt};
 }

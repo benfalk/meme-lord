@@ -99,7 +99,7 @@ macro_rules! build_identity {
 
         #[cfg(any(test, feature = "testing"))]
         impl ::fake::Dummy<::fake::Faker> for $name {
-            fn dummy_with_rng<R: ::fake::Rng + ?Sized>(
+            fn dummy_with_rng<R: ::fake::RngExt + ?Sized>(
                 _: &::fake::Faker,
                 _: &mut R,
             ) -> Self {

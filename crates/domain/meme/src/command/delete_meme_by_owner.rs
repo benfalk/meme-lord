@@ -8,28 +8,21 @@ pub struct DeleteMemeByOwner {
     pub owner_id: UserId,
 }
 
-impl<FM, MR, ID, EP> Command<FM, MR, ID, EP> for DeleteMemeByOwner
-where
-    FM: FileManager,
-    MR: MemeRepo,
-    ID: IdGenerator,
-    EP: EventPublisher,
-{
+impl Command for DeleteMemeByOwner {
     type Value = ();
     type Error = DeleteMemeByOwnerError;
 
-    async fn exec(
-        self,
-        env: &Env<FM, MR, ID, EP>,
-    ) -> Result<Self::Value, Self::Error> {
-        let meme = env.meme_repo.fetch_by_id(&self.meme_id).await.map_err(
-            |err| match err {
-                crate::port::meme_repo::FetchByIdError::MemeNotFound { id } => {
+    async fn exec(self, env: &impl EnvExt) -> Result<Self::Value, Self::Error> {
+        let meme = env
+            .meme_repo()
+            .fetch_meme_by_id(&self.meme_id)
+            .await
+            .map_err(|err| match err {
+                crate::port::meme_repo::FetchMemeByIdError::MemeNotFound { id } => {
                     DeleteMemeByOwnerError::NotFound { meme_id: id }
                 }
                 err => DeleteMemeByOwnerError::FetchById(err),
-            },
-        )?;
+            })?;
 
         if meme.owner_id != self.owner_id {
             return Err(DeleteMemeByOwnerError::PermissionDenied {
@@ -39,8 +32,8 @@ where
         }
 
         let tasks = ::tokio::join!(
-            env.file_manager.delete(&meme.path),
-            env.meme_repo.delete(&self.meme_id),
+            env.file_manager().delete(&meme.path),
+            env.meme_repo().delete_meme(&self.meme_id),
         );
 
         match tasks {
@@ -54,7 +47,7 @@ where
             (Ok(_), Err(repo)) => Err(DeleteMemeByOwnerError::RepoDelete(repo)),
         }?;
 
-        env.event_publisher.meme_deleted(meme.id).await?;
+        env.event_publisher().meme_deleted(meme.id).await?;
 
         Ok(())
     }
@@ -76,7 +69,7 @@ pub enum DeleteMemeByOwnerError {
     #[error(transparent)]
     RepoDelete(#[from] crate::port::meme_repo::DeleteByIdMemeError),
     #[error(transparent)]
-    FetchById(#[from] crate::port::meme_repo::FetchByIdError),
+    FetchById(#[from] crate::port::meme_repo::FetchMemeByIdError),
     #[error(transparent)]
     Event(#[from] crate::port::event_publisher::PublishError),
 }
@@ -97,7 +90,7 @@ mod tests {
 
         mock_env
             .meme_repo
-            .expect_fetch_by_id()
+            .expect_fetch_meme_by_id()
             .withf(move |id| *id == meme_id)
             .returning(move |_| {
                 let meme_id = meme_id;
@@ -125,7 +118,7 @@ mod tests {
 
         mock_env
             .meme_repo
-            .expect_delete()
+            .expect_delete_meme()
             .withf(move |id| *id == meme_id)
             .return_once(|_| Box::pin(async { Ok(()) }));
 

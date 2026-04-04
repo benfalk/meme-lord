@@ -1,6 +1,6 @@
 use super::prelude::*;
 use crate::port::file_manager::DownloadError;
-use crate::port::meme_repo::FetchByIdError;
+use crate::port::meme_repo::FetchMemeByIdError;
 use crate::types::{MemeId, RawFile};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -8,32 +8,25 @@ pub struct DownloadMemeFileById {
     pub meme_id: MemeId,
 }
 
-impl<FM, MR, ID, EP> Query<FM, MR, ID, EP> for DownloadMemeFileById
-where
-    FM: FileManager,
-    MR: MemeRepo,
-    ID: IdGenerator,
-    EP: EventPublisher,
-{
+impl Query for DownloadMemeFileById {
     type Value = RawFile;
     type Error = DownloadMemeFileByIdError;
 
-    async fn query(
-        self,
-        env: &Env<FM, MR, ID, EP>,
-    ) -> Result<Self::Value, Self::Error> {
+    async fn query(self, env: &impl EnvExt) -> Result<Self::Value, Self::Error> {
         let meme = env
-            .meme_repo
-            .fetch_by_id(&self.meme_id)
+            .meme_repo()
+            .fetch_meme_by_id(&self.meme_id)
             .await
             .map_err(|e| match e {
-                FetchByIdError::MemeNotFound { id } => {
+                FetchMemeByIdError::MemeNotFound { id } => {
                     DownloadMemeFileByIdError::MemeNotFound { id }
                 }
-                FetchByIdError::Unknown(e) => DownloadMemeFileByIdError::Unknown(e),
+                FetchMemeByIdError::Unknown(e) => {
+                    DownloadMemeFileByIdError::Unknown(e)
+                }
             })?;
 
-        env.file_manager
+        env.file_manager()
             .download(&meme.path)
             .await
             .map_err(|e| match e {
@@ -75,7 +68,7 @@ mod tests {
 
         mock_env
             .meme_repo
-            .expect_fetch_by_id()
+            .expect_fetch_meme_by_id()
             .withf(move |id| id == &meme_id)
             .returning(move |_| {
                 let meme = meme.clone();

@@ -23,6 +23,39 @@ where
     pub(crate) event_publisher: EP,
 }
 
+pub trait EnvExt: Send + Sync {
+    type UR: UserRepo;
+    type PH: PasswordHasher;
+    type EP: EventPublisher;
+
+    fn user_repo(&self) -> &Self::UR;
+    fn password_hasher(&self) -> &Self::PH;
+    fn event_publisher(&self) -> &Self::EP;
+}
+
+impl<UR, PH, EP> EnvExt for Env<UR, PH, EP>
+where
+    UR: UserRepo,
+    PH: PasswordHasher,
+    EP: EventPublisher,
+{
+    type UR = UR;
+    type PH = PH;
+    type EP = EP;
+
+    fn user_repo(&self) -> &Self::UR {
+        &self.user_repo
+    }
+
+    fn password_hasher(&self) -> &Self::PH {
+        &self.password_hasher
+    }
+
+    fn event_publisher(&self) -> &Self::EP {
+        &self.event_publisher
+    }
+}
+
 #[bon::bon]
 impl<UR, PH, EP> Service<UR, PH, EP>
 where
@@ -43,45 +76,35 @@ where
 
     pub async fn run_command<C>(&self, cmd: C) -> Result<C::Value, C::Error>
     where
-        C: Command<UR, PH, EP>,
+        C: Command,
     {
         cmd.exec(self.env.as_ref()).await
     }
 
     pub async fn run_query<Q>(&self, query: Q) -> Result<Q::Value, Q::Error>
     where
-        Q: Query<UR, PH, EP>,
+        Q: Query,
     {
         query.query(self.env.as_ref()).await
     }
 }
 
-pub trait Command<UR, PH, EP>: ::std::fmt::Debug
-where
-    UR: UserRepo,
-    PH: PasswordHasher,
-    EP: EventPublisher,
-{
+pub trait Command: ::std::fmt::Debug {
     type Error: ::std::error::Error + Send + Sync;
     type Value;
 
     fn exec(
         self,
-        env: &Env<UR, PH, EP>,
+        env: &impl EnvExt,
     ) -> impl Future<Output = Result<Self::Value, Self::Error>> + Send;
 }
 
-pub trait Query<UR, PH, EP>: ::std::fmt::Debug
-where
-    UR: UserRepo,
-    PH: PasswordHasher,
-    EP: EventPublisher,
-{
+pub trait Query: ::std::fmt::Debug {
     type Error: ::std::error::Error + Send + Sync;
     type Value;
 
     fn query(
         self,
-        env: &Env<UR, PH, EP>,
+        env: &impl EnvExt,
     ) -> impl Future<Output = Result<Self::Value, Self::Error>> + Send;
 }

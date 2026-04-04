@@ -1,0 +1,17 @@
+[package]
+name = "sqlite"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+identity = { path = "../../domain/identity" }
+sqlx = { workspace = true, features = ["sqlite", "runtime-tokio-rustls"] }
+meme = { path = "../../domain/meme" }
+uuid = { workspace = true, features = ["v7"] }
+tokio = { workspace = true, features = ["full"] }
+
+[dev-dependencies]
+fake = { workspace = true, features = ["derive", "url"] }
+meme = { path = "../../domain/meme", features = ["testing"] }
+identity = { path = "../../domain/identity", features = ["testing"] }
+rstest = { workspace = true }

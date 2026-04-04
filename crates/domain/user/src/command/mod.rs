@@ -8,5 +8,5 @@ mod prelude {
     pub use crate::port::event_publisher::EventPublisher;
     pub use crate::port::password_hasher::PasswordHasher;
     pub use crate::port::user_repo::UserRepo;
-    pub use crate::service::{Command, Env};
+    pub use crate::service::{Command, EnvExt};
 }

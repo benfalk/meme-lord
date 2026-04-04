@@ -1,5 +1,7 @@
-use crate::entity::Meme;
-use crate::types::{ByteSize, MemeCaption, MemeId, MemePath, Timestamp};
+use crate::entity::{Meme, UserTag};
+use crate::types::{
+    ByteSize, MemeCaption, MemeId, MemePath, TagId, TagName, Timestamp,
+};
 use ::identity::UserId;
 
 #[derive(Debug, ::thiserror::Error)]
@@ -46,6 +48,23 @@ pub trait EventPublisher: Send + Sync {
             .await
         }
     }
+
+    fn user_tag_created(
+        &self,
+        tag: &UserTag,
+    ) -> impl Future<Output = PublishResult> + Send {
+        async move {
+            self.publish(Event {
+                timestamp: tag.id.created_at(),
+                message: Message::UserTagCreated {
+                    tag_id: tag.id,
+                    owner_id: tag.owner_id,
+                    name: tag.name.clone(),
+                },
+            })
+            .await
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -66,5 +85,10 @@ pub enum Message {
     },
     MemeDeleted {
         meme_id: MemeId,
+    },
+    UserTagCreated {
+        tag_id: TagId,
+        owner_id: UserId,
+        name: TagName,
     },
 }

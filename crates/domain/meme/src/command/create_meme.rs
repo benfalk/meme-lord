@@ -11,22 +11,13 @@ pub struct CreateMeme {
     pub caption: Option<MemeCaption>,
 }
 
-impl<FM, MR, ID, EP> Command<FM, MR, ID, EP> for CreateMeme
-where
-    FM: FileManager,
-    MR: MemeRepo,
-    ID: IdGenerator,
-    EP: EventPublisher,
-{
+impl Command for CreateMeme {
     type Value = Meme;
     type Error = CreateMemeError;
 
-    async fn exec(
-        self,
-        env: &Env<FM, MR, ID, EP>,
-    ) -> Result<Self::Value, Self::Error> {
+    async fn exec(self, env: &impl EnvExt) -> Result<Self::Value, Self::Error> {
         let meme = Meme {
-            id: env.id_generator.generate_meme_id().await?,
+            id: env.id_generator().generate_meme_id().await?,
             owner_id: self.owner_id,
             path: self.path,
             caption: self.caption,
@@ -34,8 +25,8 @@ where
         };
 
         let tasks = ::tokio::join!(
-            env.file_manager.upload(&meme.path, &self.raw_file),
-            env.meme_repo.insert(&meme),
+            env.file_manager().upload(&meme.path, &self.raw_file),
+            env.meme_repo().insert_meme(&meme),
         );
 
         let meme = match tasks {
@@ -45,15 +36,15 @@ where
             }
             (Err(upload), Ok(())) => Err(CreateMemeError::UploadFailed {
                 upload,
-                insert_revert: env.meme_repo.delete(&meme.id).await.err(),
+                insert_revert: env.meme_repo().delete_meme(&meme.id).await.err(),
             }),
             (Ok(()), Err(insert)) => Err(CreateMemeError::InsertFailed {
                 insert,
-                upload_revert: env.file_manager.delete(&meme.path).await.err(),
+                upload_revert: env.file_manager().delete(&meme.path).await.err(),
             }),
         }?;
 
-        env.event_publisher.meme_created(&meme).await?;
+        env.event_publisher().meme_created(&meme).await?;
 
         Ok(meme)
     }
@@ -123,7 +114,7 @@ mod tests {
 
         mock_env
             .meme_repo
-            .expect_insert()
+            .expect_insert_meme()
             .withf(move |meme| {
                 meme.id == meme_id
                     && meme.owner_id == owner_id

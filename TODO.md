@@ -32,3 +32,5 @@
         to pull data from these images to extract metadata as well as provide
         some editing capabilities such as resizing, cropping, and adding text
         captions.
+- [ ] Clean up unwraps in sqlite adapter and replace them with proper error
+      handling that converts to errors to avoid panics.

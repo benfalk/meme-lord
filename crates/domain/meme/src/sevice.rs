@@ -29,6 +29,47 @@ where
     pub(crate) event_publisher: EP,
 }
 
+pub trait EnvExt: Send + Sync {
+    type FM: FileManager;
+    type MR: MemeRepo;
+    type ID: IdGenerator;
+    type EP: EventPublisher;
+
+    fn file_manager(&self) -> &Self::FM;
+    fn meme_repo(&self) -> &Self::MR;
+    fn id_generator(&self) -> &Self::ID;
+    fn event_publisher(&self) -> &Self::EP;
+}
+
+impl<FM, MR, ID, EP> EnvExt for Env<FM, MR, ID, EP>
+where
+    FM: FileManager,
+    MR: MemeRepo,
+    ID: IdGenerator,
+    EP: EventPublisher,
+{
+    type FM = FM;
+    type MR = MR;
+    type ID = ID;
+    type EP = EP;
+
+    fn file_manager(&self) -> &Self::FM {
+        &self.file_manager
+    }
+
+    fn meme_repo(&self) -> &Self::MR {
+        &self.meme_repo
+    }
+
+    fn id_generator(&self) -> &Self::ID {
+        &self.id_generator
+    }
+
+    fn event_publisher(&self) -> &Self::EP {
+        &self.event_publisher
+    }
+}
+
 #[bon::bon]
 impl<FM, MR, ID, EP> Service<FM, MR, ID, EP>
 where
@@ -56,47 +97,35 @@ where
 
     pub async fn run_command<C>(&self, cmd: C) -> Result<C::Value, C::Error>
     where
-        C: Command<FM, MR, ID, EP>,
+        C: Command,
     {
         cmd.exec(self.env.as_ref()).await
     }
 
     pub async fn run_query<Q>(&self, query: Q) -> Result<Q::Value, Q::Error>
     where
-        Q: Query<FM, MR, ID, EP>,
+        Q: Query,
     {
         query.query(self.env.as_ref()).await
     }
 }
 
-pub trait Command<FM, MR, ID, EP>: ::std::fmt::Debug
-where
-    FM: FileManager,
-    MR: MemeRepo,
-    ID: IdGenerator,
-    EP: EventPublisher,
-{
+pub trait Command: ::std::fmt::Debug {
     type Error: ::std::error::Error + Send + Sync;
     type Value;
 
     fn exec(
         self,
-        env: &Env<FM, MR, ID, EP>,
+        env: &impl EnvExt,
     ) -> impl Future<Output = Result<Self::Value, Self::Error>> + Send;
 }
 
-pub trait Query<FM, MR, ID, EP>: ::std::fmt::Debug
-where
-    FM: FileManager,
-    MR: MemeRepo,
-    ID: IdGenerator,
-    EP: EventPublisher,
-{
+pub trait Query: ::std::fmt::Debug {
     type Error: ::std::error::Error + Send + Sync;
     type Value;
 
     fn query(
         self,
-        env: &Env<FM, MR, ID, EP>,
+        env: &impl EnvExt,
     ) -> impl Future<Output = Result<Self::Value, Self::Error>> + Send;
 }

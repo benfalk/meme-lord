@@ -1,5 +1,6 @@
 use super::prelude::*;
 use crate::entity::UserPasswordHash;
+use crate::service::EnvExt;
 use crate::types::{Password, UserId};
 
 #[derive(Debug)]
@@ -27,38 +28,33 @@ pub enum ChangePasswordError {
     Publish(#[from] crate::port::event_publisher::PublishError),
 }
 
-impl<UR, PH, EP> Command<UR, PH, EP> for ChangePassword
-where
-    UR: UserRepo,
-    PH: PasswordHasher,
-    EP: EventPublisher,
-{
+impl Command for ChangePassword {
     type Error = ChangePasswordError;
     type Value = ();
 
-    async fn exec(self, env: &Env<UR, PH, EP>) -> Result<Self::Value, Self::Error> {
+    async fn exec(self, env: &impl EnvExt) -> Result<Self::Value, Self::Error> {
         let db_hash = env
-            .user_repo
+            .user_repo()
             .get_hash_by_user_id(&self.user_id)
             .await?
             .ok_or_else(|| ChangePasswordError::InvalidUserId(self.user_id))?;
 
-        env.password_hasher
+        env.password_hasher()
             .verify(&self.current_password, &db_hash.hash)
             .await?
             .then_some(())
             .ok_or(ChangePasswordError::InvalidCurrentPassword)?;
 
-        let new_hash = env.password_hasher.hash(&self.new_password).await?;
+        let new_hash = env.password_hasher().hash(&self.new_password).await?;
 
-        env.user_repo
+        env.user_repo()
             .update_user_password_hash(&UserPasswordHash {
                 user_id: self.user_id,
                 hash: new_hash,
             })
             .await?;
 
-        env.event_publisher
+        env.event_publisher()
             .user_password_changed(self.user_id)
             .await?;
 
