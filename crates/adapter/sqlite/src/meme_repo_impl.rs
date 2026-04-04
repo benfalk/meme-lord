@@ -7,6 +7,7 @@ use ::sqlx::SqlitePool;
 use ::uuid::Uuid;
 
 type MemeRow = (Vec<u8>, Vec<u8>, String, Option<String>, i64);
+type UserTagRow = (Vec<u8>, Vec<u8>, String);
 
 impl MemeRepo for Sqlite {
     async fn fetch_meme_by_id(
@@ -208,6 +209,114 @@ impl MemeRepo for Sqlite {
             _ => InsertUserTagLinkError::Unknown(Box::new(err)),
         };
         Err(insert_err)
+    }
+
+    async fn delete_user_tag_link(
+        &self,
+        tag_link: &UserTagLink,
+    ) -> Result<(), DeleteUserTagLinkError> {
+        let results = sqlx::query(
+            r#"
+            DELETE FROM user_tag_links
+            WHERE meme_id = ? AND tag_id = ?
+            "#,
+        )
+        .bind(tag_link.meme_id.into_inner().as_bytes().as_slice())
+        .bind(tag_link.tag_id.into_inner().as_bytes().as_slice())
+        .execute(&self.pool)
+        .await
+        .map_err(|err| DeleteUserTagLinkError::Unknown(Box::new(err)))?;
+
+        if results.rows_affected() == 0 {
+            return Err(DeleteUserTagLinkError::LinkNotFound {
+                meme_id: tag_link.meme_id,
+                tag_id: tag_link.tag_id,
+            });
+        }
+
+        Ok(())
+    }
+
+    async fn update_user_tag_by_id(
+        &self,
+        tag: &UserTag,
+    ) -> Result<(), UpdateUserTagByIdError> {
+        let results = sqlx::query(
+            r#"
+            UPDATE user_tags
+            SET owner_id = ?, name = ?
+            WHERE id = ?
+            "#,
+        )
+        .bind(tag.owner_id.into_inner().as_bytes().as_slice())
+        .bind(tag.name.as_str())
+        .bind(tag.id.into_inner().as_bytes().as_slice())
+        .execute(&self.pool)
+        .await
+        .map_err(|err| {
+            if let Some(db_err) = err.as_database_error()
+                && db_err.code().as_deref() == Some("2067")
+            {
+                return UpdateUserTagByIdError::NameTaken {
+                    name: tag.name.clone(),
+                };
+            }
+
+            UpdateUserTagByIdError::Unknown(Box::new(err))
+        })?;
+
+        if results.rows_affected() == 0 {
+            return Err(UpdateUserTagByIdError::TagNotFound { id: tag.id });
+        }
+
+        Ok(())
+    }
+
+    async fn delete_user_tag_by_id(
+        &self,
+        id: &TagId,
+    ) -> Result<(), DeleteUserTagByIdError> {
+        let results = sqlx::query("DELETE FROM user_tags WHERE id = ?")
+            .bind(id.into_inner().as_bytes().as_slice())
+            .execute(&self.pool)
+            .await
+            .map_err(|err| DeleteUserTagByIdError::Unknown(Box::new(err)))?;
+
+        if results.rows_affected() == 0 {
+            return Err(DeleteUserTagByIdError::TagNotFound { id: *id });
+        }
+
+        Ok(())
+    }
+
+    async fn user_tags(
+        &self,
+        owner_id: &UserId,
+    ) -> Result<Vec<UserTag>, UserTagsError> {
+        let rows: Vec<UserTagRow> = sqlx::query_as(
+            r#"
+            SELECT id, owner_id, name
+            FROM user_tags
+            WHERE owner_id = ?
+            "#,
+        )
+        .bind(owner_id.into_inner().as_bytes().as_slice())
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|err| UserTagsError::Unknown(Box::new(err)))?;
+
+        Ok(rows
+            .into_iter()
+            .map(|(id, owner_id, name)| {
+                let id = Uuid::from_slice(&id).unwrap();
+                let owner_id = Uuid::from_slice(&owner_id).unwrap();
+                UserTag {
+                    id: TagId::try_from(id).unwrap(),
+                    owner_id: UserId::try_from(owner_id).unwrap(),
+                    name: name.into(),
+                }
+            })
+            .collect())
     }
 }
 
@@ -507,5 +616,105 @@ mod tests {
         test_meme_repo(&sqlite)
             .await
             .expect("meme repo test suite failed");
+    }
+
+    #[sqlx::test(fixtures("../fixtures/single-tag.sql"))]
+    async fn update_user_tag_by_id_success(pool: SqlitePool) {
+        let sqlite = Sqlite::new(pool);
+        let updated = UserTag {
+            id: single_tag_id(),
+            owner_id: single_tag_owner_id(),
+            name: "rofl".into(),
+        };
+        sqlite.update_user_tag_by_id(&updated).await.unwrap();
+    }
+
+    #[sqlx::test(fixtures("../fixtures/multi-tags.sql"))]
+    async fn update_user_tag_by_id_name_taken(pool: SqlitePool) {
+        let sqlite = Sqlite::new(pool);
+        let updated = UserTag {
+            id: single_tag_id(),
+            owner_id: single_tag_owner_id(),
+            name: "programming".into(),
+        };
+        let err = sqlite.update_user_tag_by_id(&updated).await.unwrap_err();
+        assert!(matches!(
+            err,
+            UpdateUserTagByIdError::NameTaken { name } if name == "programming"
+        ));
+    }
+
+    #[sqlx::test]
+    async fn update_user_tag_by_id_not_found(pool: SqlitePool) {
+        let sqlite = Sqlite::new(pool);
+        let tag = Faker.fake::<UserTag>();
+        let err = sqlite.update_user_tag_by_id(&tag).await.unwrap_err();
+        assert!(matches!(
+            err,
+            UpdateUserTagByIdError::TagNotFound { id } if id == tag.id
+        ));
+    }
+
+    #[sqlx::test(fixtures("../fixtures/single-tag.sql"))]
+    async fn delete_user_tag_success(pool: SqlitePool) {
+        let sqlite = Sqlite::new(pool);
+        let tag_id = single_tag_id();
+        sqlite.delete_user_tag_by_id(&tag_id).await.unwrap();
+    }
+
+    #[sqlx::test]
+    async fn delete_user_tag_not_found(pool: SqlitePool) {
+        let sqlite = Sqlite::new(pool);
+        let tag_id = TagId::generate();
+        let err = sqlite.delete_user_tag_by_id(&tag_id).await.unwrap_err();
+        assert!(matches!(
+            err,
+            DeleteUserTagByIdError::TagNotFound { id } if id == tag_id
+        ));
+    }
+
+    #[sqlx::test(fixtures("../fixtures/single-meme-and-tag-linked.sql"))]
+    async fn delete_user_tag_link_success(pool: SqlitePool) {
+        let sqlite = Sqlite::new(pool);
+        let link = UserTagLink {
+            meme_id: single_meme_id(),
+            tag_id: single_tag_id(),
+        };
+        sqlite.delete_user_tag_link(&link).await.unwrap();
+    }
+
+    #[sqlx::test]
+    async fn delete_user_tag_link_not_found(pool: SqlitePool) {
+        let sqlite = Sqlite::new(pool);
+        let link = UserTagLink {
+            meme_id: single_meme_id(),
+            tag_id: single_tag_id(),
+        };
+        let err = sqlite.delete_user_tag_link(&link).await.unwrap_err();
+        assert!(matches!(
+            err,
+            DeleteUserTagLinkError::LinkNotFound {
+                meme_id,
+                tag_id
+            } if meme_id == single_meme_id() && tag_id == single_tag_id()
+        ));
+    }
+
+    #[sqlx::test(fixtures("../fixtures/multi-tags.sql"))]
+    async fn user_tags_success_some(pool: SqlitePool) {
+        let sqlite = Sqlite::new(pool);
+        let owner_id = single_tag_owner_id();
+        let tags = sqlite.user_tags(&owner_id).await.unwrap();
+        assert_eq!(tags.len(), 2);
+        assert!(tags.iter().any(|t| t.name == "nsfw"));
+        assert!(tags.iter().any(|t| t.name == "programming"));
+    }
+
+    #[sqlx::test]
+    async fn user_tags_success_none(pool: SqlitePool) {
+        let sqlite = Sqlite::new(pool);
+        let owner_id = UserId::generate();
+        let tags = sqlite.user_tags(&owner_id).await.unwrap();
+        assert!(tags.is_empty());
     }
 }

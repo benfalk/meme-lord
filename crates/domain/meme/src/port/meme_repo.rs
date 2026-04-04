@@ -1,5 +1,6 @@
 use crate::entity::{Meme, UserTag, UserTagLink};
 use crate::types::{MemeId, MemePath, TagId, TagName};
+use ::identity::UserId;
 
 #[cfg_attr(any(test, feature = "testing"), ::mockall::automock)]
 pub trait MemeRepo: Send + Sync {
@@ -28,10 +29,30 @@ pub trait MemeRepo: Send + Sync {
         tag: &UserTag,
     ) -> impl Future<Output = Result<(), InsertUserTagError>> + Send;
 
+    fn update_user_tag_by_id(
+        &self,
+        tag: &UserTag,
+    ) -> impl Future<Output = Result<(), UpdateUserTagByIdError>> + Send;
+
+    fn delete_user_tag_by_id(
+        &self,
+        id: &TagId,
+    ) -> impl Future<Output = Result<(), DeleteUserTagByIdError>> + Send;
+
     fn insert_user_tag_link(
         &self,
         tag_link: &UserTagLink,
     ) -> impl Future<Output = Result<(), InsertUserTagLinkError>> + Send;
+
+    fn delete_user_tag_link(
+        &self,
+        tag_link: &UserTagLink,
+    ) -> impl Future<Output = Result<(), DeleteUserTagLinkError>> + Send;
+
+    fn user_tags(
+        &self,
+        owner_id: &UserId,
+    ) -> impl Future<Output = Result<Vec<UserTag>, UserTagsError>> + Send;
 }
 
 #[derive(Debug, ::thiserror::Error)]
@@ -43,6 +64,10 @@ pub enum MemeRepoError {
     FetchMemeById(#[from] FetchMemeByIdError),
     InsertUserTag(#[from] InsertUserTagError),
     InsertUserTagLink(#[from] InsertUserTagLinkError),
+    UpdateUserTagById(#[from] UpdateUserTagByIdError),
+    DeleteUserTagById(#[from] DeleteUserTagByIdError),
+    DeleteUserTagLink(#[from] DeleteUserTagLinkError),
+    UserTags(#[from] UserTagsError),
 }
 
 #[derive(Debug, ::thiserror::Error)]
@@ -101,6 +126,38 @@ pub enum InsertUserTagLinkError {
     TagNotFound { tag_id: TagId },
     #[error("insert-user-tag-link both missing: meme {meme_id} tag {tag_id}")]
     BothMissing { meme_id: MemeId, tag_id: TagId },
+    #[error(transparent)]
+    Unknown(Box<dyn std::error::Error + Send + Sync>),
+}
+
+#[derive(Debug, ::thiserror::Error)]
+pub enum UpdateUserTagByIdError {
+    #[error("update-user-tag-by-id not-found: {id}")]
+    TagNotFound { id: TagId },
+    #[error("update-user-tag-by-id name-taken: {name}")]
+    NameTaken { name: TagName },
+    #[error(transparent)]
+    Unknown(Box<dyn std::error::Error + Send + Sync>),
+}
+
+#[derive(Debug, ::thiserror::Error)]
+pub enum DeleteUserTagByIdError {
+    #[error("delete-user-tag-by-id not-found: {id}")]
+    TagNotFound { id: TagId },
+    #[error(transparent)]
+    Unknown(Box<dyn std::error::Error + Send + Sync>),
+}
+
+#[derive(Debug, ::thiserror::Error)]
+pub enum DeleteUserTagLinkError {
+    #[error("delete-user-tag-link not-found: tag {tag_id} meme {meme_id}")]
+    LinkNotFound { tag_id: TagId, meme_id: MemeId },
+    #[error(transparent)]
+    Unknown(Box<dyn std::error::Error + Send + Sync>),
+}
+
+#[derive(Debug, ::thiserror::Error)]
+pub enum UserTagsError {
     #[error(transparent)]
     Unknown(Box<dyn std::error::Error + Send + Sync>),
 }

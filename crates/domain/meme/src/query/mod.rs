@@ -1,5 +1,6 @@
 pub mod download_meme_file_by_id;
 pub mod fetch_meme_by_id;
+pub mod fetch_user_tags;
 
 mod prelude {
     pub(crate) use crate::port::file_manager::FileManager;
