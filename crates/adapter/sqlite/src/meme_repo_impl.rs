@@ -6,8 +6,8 @@ use ::meme::types::{ByteSize, MemeId, TagId};
 use ::sqlx::SqlitePool;
 use ::uuid::Uuid;
 
-type MemeRow = (Vec<u8>, Vec<u8>, String, Option<String>, i64);
-type UserTagRow = (Vec<u8>, Vec<u8>, String);
+type MemeRow = (Uuid, Uuid, String, Option<String>, i64);
+type UserTagRow = (Uuid, Uuid, String);
 
 impl MemeRepo for Sqlite {
     async fn fetch_meme_by_id(
@@ -21,7 +21,7 @@ impl MemeRepo for Sqlite {
             WHERE id = ?
             "#,
         )
-        .bind(id.into_inner().as_bytes().as_slice())
+        .bind(id.byte_slice())
         .fetch_optional(&self.pool)
         .await
         .map_err(|err| FetchMemeByIdError::Unknown(Box::new(err)))?;
@@ -30,12 +30,14 @@ impl MemeRepo for Sqlite {
             return Err(FetchMemeByIdError::MemeNotFound { id: *id });
         };
 
-        let id = Uuid::from_slice(&id).unwrap();
-        let owner_id = Uuid::from_slice(&owner_id).unwrap();
+        let id = MemeId::try_from(id)
+            .map_err(|err| FetchMemeByIdError::Unknown(Box::new(err)))?;
+        let owner_id = UserId::try_from(owner_id)
+            .map_err(|err| FetchMemeByIdError::Unknown(Box::new(err)))?;
 
         Ok(Meme {
-            id: MemeId::try_from(id).unwrap(),
-            owner_id: UserId::try_from(owner_id).unwrap(),
+            id,
+            owner_id,
             path: meme_path.into(),
             file_size: ByteSize::b(file_size as u64),
             caption: caption.map(Into::into),
@@ -49,8 +51,8 @@ impl MemeRepo for Sqlite {
             VALUES (?, ?, ?, ?, ?)
             "#,
         )
-        .bind(meme.id.into_inner().as_bytes().as_slice())
-        .bind(meme.owner_id.into_inner().as_bytes().as_slice())
+        .bind(meme.id.byte_slice())
+        .bind(meme.owner_id.byte_slice())
         .bind(meme.path.as_str())
         .bind(meme.caption.as_ref().map(|c| c.as_str()))
         .bind(meme.file_size.as_u64() as i64)
@@ -77,7 +79,7 @@ impl MemeRepo for Sqlite {
 
     async fn delete_meme(&self, id: &MemeId) -> Result<(), DeleteByIdMemeError> {
         let results = ::sqlx::query("DELETE FROM memes WHERE id = ?")
-            .bind(id.into_inner().as_bytes().as_slice())
+            .bind(id.byte_slice())
             .execute(&self.pool)
             .await
             .map_err(|err| DeleteByIdMemeError::Unknown(Box::new(err)))?;
@@ -100,11 +102,11 @@ impl MemeRepo for Sqlite {
             WHERE id = ?
             "#,
         )
-        .bind(meme.owner_id.into_inner().as_bytes().as_slice())
+        .bind(meme.owner_id.byte_slice())
         .bind(meme.path.as_str())
         .bind(meme.caption.as_ref().map(|c| c.as_str()))
         .bind(meme.file_size.as_u64() as i64)
-        .bind(meme.id.into_inner().as_bytes().as_slice())
+        .bind(meme.id.byte_slice())
         .execute(&self.pool)
         .await
         .map_err(|err| {
@@ -136,8 +138,8 @@ impl MemeRepo for Sqlite {
             VALUES (?, ?, ?)
             "#,
         )
-        .bind(tag.id.into_inner().as_bytes().as_slice())
-        .bind(tag.owner_id.into_inner().as_bytes().as_slice())
+        .bind(tag.id.byte_slice())
+        .bind(tag.owner_id.byte_slice())
         .bind(tag.name.as_str())
         .execute(&self.pool)
         .await
@@ -170,8 +172,8 @@ impl MemeRepo for Sqlite {
             VALUES (?, ?)
             "#,
         )
-        .bind(tag_link.meme_id.into_inner().as_bytes().as_slice())
-        .bind(tag_link.tag_id.into_inner().as_bytes().as_slice())
+        .bind(tag_link.meme_id.byte_slice())
+        .bind(tag_link.tag_id.byte_slice())
         .execute(&self.pool)
         .await;
 
@@ -191,7 +193,7 @@ impl MemeRepo for Sqlite {
                     tag_exists(&self.pool, &tag_link.tag_id),
                     meme_exists(&self.pool, &tag_link.meme_id),
                 )
-                .unwrap();
+                .map_err(|e| InsertUserTagLinkError::Unknown(Box::new(e)))?;
                 match checks {
                     (true, false) => InsertUserTagLinkError::MemeNotFound {
                         meme_id: tag_link.meme_id,
@@ -221,8 +223,8 @@ impl MemeRepo for Sqlite {
             WHERE meme_id = ? AND tag_id = ?
             "#,
         )
-        .bind(tag_link.meme_id.into_inner().as_bytes().as_slice())
-        .bind(tag_link.tag_id.into_inner().as_bytes().as_slice())
+        .bind(tag_link.meme_id.byte_slice())
+        .bind(tag_link.tag_id.byte_slice())
         .execute(&self.pool)
         .await
         .map_err(|err| DeleteUserTagLinkError::Unknown(Box::new(err)))?;
@@ -248,9 +250,9 @@ impl MemeRepo for Sqlite {
             WHERE id = ?
             "#,
         )
-        .bind(tag.owner_id.into_inner().as_bytes().as_slice())
+        .bind(tag.owner_id.byte_slice())
         .bind(tag.name.as_str())
-        .bind(tag.id.into_inner().as_bytes().as_slice())
+        .bind(tag.id.byte_slice())
         .execute(&self.pool)
         .await
         .map_err(|err| {
@@ -277,7 +279,7 @@ impl MemeRepo for Sqlite {
         id: &TagId,
     ) -> Result<(), DeleteUserTagByIdError> {
         let results = sqlx::query("DELETE FROM user_tags WHERE id = ?")
-            .bind(id.into_inner().as_bytes().as_slice())
+            .bind(id.byte_slice())
             .execute(&self.pool)
             .await
             .map_err(|err| DeleteUserTagByIdError::Unknown(Box::new(err)))?;
@@ -300,23 +302,22 @@ impl MemeRepo for Sqlite {
             WHERE owner_id = ?
             "#,
         )
-        .bind(owner_id.into_inner().as_bytes().as_slice())
+        .bind(owner_id.byte_slice())
         .fetch_all(&self.pool)
         .await
         .map_err(|err| UserTagsError::Unknown(Box::new(err)))?;
 
-        Ok(rows
-            .into_iter()
+        rows.into_iter()
             .map(|(id, owner_id, name)| {
-                let id = Uuid::from_slice(&id).unwrap();
-                let owner_id = Uuid::from_slice(&owner_id).unwrap();
-                UserTag {
-                    id: TagId::try_from(id).unwrap(),
-                    owner_id: UserId::try_from(owner_id).unwrap(),
+                Ok(UserTag {
+                    id: TagId::try_from(id)
+                        .map_err(|err| UserTagsError::Unknown(Box::new(err)))?,
+                    owner_id: UserId::try_from(owner_id)
+                        .map_err(|err| UserTagsError::Unknown(Box::new(err)))?,
                     name: name.into(),
-                }
+                })
             })
-            .collect())
+            .collect()
     }
 }
 
@@ -328,7 +329,7 @@ async fn tag_exists(pool: &SqlitePool, id: &TagId) -> Result<bool, sqlx::Error> 
         WHERE id = ?
         "#,
     )
-    .bind(id.into_inner().as_bytes().as_slice())
+    .bind(id.byte_slice())
     .fetch_optional(pool)
     .await?;
 
@@ -343,7 +344,7 @@ async fn meme_exists(pool: &SqlitePool, id: &MemeId) -> Result<bool, sqlx::Error
         WHERE id = ?
         "#,
     )
-    .bind(id.into_inner().as_bytes().as_slice())
+    .bind(id.byte_slice())
     .fetch_optional(pool)
     .await?;
 
@@ -354,22 +355,17 @@ async fn meme_exists(pool: &SqlitePool, id: &MemeId) -> Result<bool, sqlx::Error
 mod tests {
     use super::*;
     use ::fake::{Fake, Faker};
-    use ::sqlx::SqlitePool;
 
     fn single_meme_id() -> MemeId {
-        "01890f4c5b7a7cc2bb7b8e8b8e7e9c3a"
-            .parse::<MemeId>()
-            .unwrap()
+        "01890f4c5b7a7cc2bb7b8e8b8e7e9c3a".parse().unwrap()
     }
 
     fn single_meme_owner_id() -> UserId {
-        "01890f4d2e3b7e3a8c1d9b2a4f6e1d2c"
-            .parse::<UserId>()
-            .unwrap()
+        "01890f4d2e3b7e3a8c1d9b2a4f6e1d2c".parse().unwrap()
     }
 
     fn single_tag_id() -> TagId {
-        "01890f4e5b7a7cc2bb7b8e8b8e7e9c3e".parse::<TagId>().unwrap()
+        "01890f4e5b7a7cc2bb7b8e8b8e7e9c3e".parse().unwrap()
     }
 
     fn single_tag_owner_id() -> UserId {
@@ -610,9 +606,10 @@ mod tests {
         ));
     }
 
-    #[sqlx::test]
-    async fn meme_repo_test_suite(pool: SqlitePool) {
-        let sqlite = Sqlite::new(pool);
+    #[tokio::test]
+    async fn meme_repo_test_suite() {
+        let sqlite = Sqlite::in_memory().await;
+        sqlite.migrate().await.unwrap();
         test_meme_repo(&sqlite)
             .await
             .expect("meme repo test suite failed");

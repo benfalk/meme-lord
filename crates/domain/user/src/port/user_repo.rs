@@ -21,8 +21,6 @@ pub enum InsertUserWithHashError {
     NameTaken { username: Username },
     #[error("insert user with hash id taken: {id}")]
     IdTaken { id: UserId },
-    #[error("duplicate detected {id}:{username}")]
-    Duplicate { id: UserId, username: Username },
     #[error("insert user with hash unknown: {0}")]
     Unknown(#[from] ::anyhow::Error),
 }
@@ -169,16 +167,6 @@ pub async fn test_adapter<R: UserRepo>(adapter: &R) -> Result<(), Error> {
     assert!(
         matches!(err, InsertUserWithHashError::IdTaken { id } if id == user.id),
         "inserting a user with a taken id should fail with the correct id"
-    );
-
-    let err = adapter
-        .insert_user_with_hash(&user, &hash)
-        .await
-        .expect_err("inserting a duplicate user should fail");
-
-    assert!(
-        matches!(err, InsertUserWithHashError::Duplicate { id, username } if id == user.id && username == user.username),
-        "inserting a duplicate user should fail with the correct id and name"
     );
 
     let fetched_hash = adapter

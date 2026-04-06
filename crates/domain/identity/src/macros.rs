@@ -21,14 +21,22 @@ macro_rules! build_identity {
         }
 
         impl $name {
+            #[inline]
             pub fn generate() -> Self {
                 Self(::uuid::Uuid::now_v7())
             }
 
+            #[inline]
+            pub fn byte_slice(&self) -> &[u8] {
+                self.0.as_bytes().as_slice()
+            }
+
+            #[inline]
             pub fn into_inner(self) -> ::uuid::Uuid {
                 self.0
             }
 
+            #[inline]
             pub fn created_at(&self) -> ::jiff::Timestamp {
                 let bytes = self.0.as_bytes();
                 let millis: u64 = (bytes[0] as u64) << 40
@@ -51,6 +59,7 @@ macro_rules! build_identity {
         impl TryFrom<::uuid::Uuid> for $name {
             type Error = ::paste::paste! { [<$name VersionError>] };
 
+            #[inline]
             fn try_from(value: ::uuid::Uuid) -> Result<Self, Self::Error> {
                 if value.get_version_num() == 7 {
                     Ok(Self(value))
@@ -65,25 +74,39 @@ macro_rules! build_identity {
         impl ::std::str::FromStr for $name {
             type Err = ::paste::paste! { [<$name ParseError>] };
 
+            #[inline]
             fn from_str(s: &str) -> Result<Self, Self::Err> {
                 let uuid = s.parse::<::uuid::Uuid>()?;
                 Self::try_from(uuid).map_err(Into::into)
             }
         }
 
+        impl TryFrom<&[u8]> for $name {
+            type Error = ::paste::paste! { [<$name ParseError>] };
+
+            #[inline]
+            fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
+                let uuid = ::uuid::Uuid::from_slice(value)?;
+                Self::try_from(uuid).map_err(Into::into)
+            }
+        }
+
         impl ::std::borrow::Borrow<::uuid::Uuid> for $name {
+            #[inline]
             fn borrow(&self) -> &::uuid::Uuid {
                 &self.0
             }
         }
 
         impl ::std::cmp::PartialEq<::uuid::Uuid> for $name {
+            #[inline]
             fn eq(&self, other: &::uuid::Uuid) -> bool {
                 self.0 == *other
             }
         }
 
         impl ::std::fmt::Display for $name {
+            #[inline]
             fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
                 self.0.fmt(f)
             }
@@ -91,6 +114,7 @@ macro_rules! build_identity {
 
         ::paste::paste! {
             impl From<[<$name VersionError>]> for [<$name ParseError>] {
+                #[inline]
                 fn from(value: [<$name VersionError>]) -> Self {
                     Self::InvalidVersion(value.0)
                 }
@@ -123,6 +147,23 @@ mod tests {
         let first = TestId::generate();
         let second = TestId::generate();
         assert_ne!(first, second);
+    }
+
+    #[rstest::rstest]
+    fn can_build_from_a_v7_uuid_slice() {
+        let v7_uuid = Uuid::now_v7();
+        let test_id = TestId::try_from(v7_uuid.as_bytes().as_slice())
+            .expect("to build from v7 UUID slice");
+        assert_eq!(test_id, v7_uuid);
+        assert_eq!(test_id.into_inner(), v7_uuid);
+    }
+
+    #[rstest::rstest]
+    fn can_get_a_v7_uuid_slice() {
+        let test_id = TestId::generate();
+        let slice = test_id.byte_slice();
+        let uuid = Uuid::from_slice(slice).expect("to parse UUID from slice");
+        assert_eq!(test_id, uuid);
     }
 
     #[rstest::rstest]

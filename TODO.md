@@ -10,10 +10,10 @@
   - [X] Create events for all of the commands in this crate
 - [X] Create a `Null` event publisher implementation that does nothing, in case
       we don't want to publish events in certain environments (e.g. testing).
-- [ ] Create a SQLX multi-crate repository implementation for the `UserRepository`
+- [X] Create a SQLX multi-crate repository implementation for the `UserRepository`
       port trait.  This should accept a `sqlx::PgPool` **OR** a database URL as
       a constructor argument.
-  - [ ] Should expose some kind of migration functionality to create the
+  - [X] Should expose some kind of migration functionality to create the
         necessary tables and indexes in the database.
 - [X] Create an `identity` domain crate which can store ids for various
       entities from different domains. This will allow us to have a single
@@ -32,5 +32,7 @@
         to pull data from these images to extract metadata as well as provide
         some editing capabilities such as resizing, cropping, and adding text
         captions.
-- [ ] Clean up unwraps in sqlite adapter and replace them with proper error
+- [x] Clean up unwraps in sqlite adapter and replace them with proper error
       handling that converts to errors to avoid panics.
+- [ ] Create a simple file storage adapter that implements the `FileManger`
+      port trait for storing meme images on the local file system.

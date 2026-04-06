@@ -63,12 +63,6 @@ impl UserRepo for InMemoryUserRepo {
 
         match inner.users.get(&user.id) {
             None => (),
-            Some(existing_user) if existing_user == user => {
-                return Err(InsertUserWithHashError::Duplicate {
-                    id: existing_user.id,
-                    username: existing_user.username.clone(),
-                });
-            }
             Some(existing_user) if existing_user.id == user.id => {
                 return Err(InsertUserWithHashError::IdTaken { id: user.id });
             }

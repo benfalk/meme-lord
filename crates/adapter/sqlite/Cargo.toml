@@ -5,13 +5,21 @@ edition = "2024"
 
 [dependencies]
 identity = { path = "../../domain/identity" }
-sqlx = { workspace = true, features = ["sqlite", "runtime-tokio-rustls"] }
 meme = { path = "../../domain/meme" }
+user = { path = "../../domain/user" }
+
+sqlx = { workspace = true, features = [
+  "sqlite",
+  "runtime-tokio-rustls",
+  "uuid",
+] }
 uuid = { workspace = true, features = ["v7"] }
 tokio = { workspace = true, features = ["full"] }
 
 [dev-dependencies]
-fake = { workspace = true, features = ["derive", "url"] }
 meme = { path = "../../domain/meme", features = ["testing"] }
+user = { path = "../../domain/user", features = ["testing"] }
 identity = { path = "../../domain/identity", features = ["testing"] }
+
+fake = { workspace = true, features = ["derive", "url"] }
 rstest = { workspace = true }

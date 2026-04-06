@@ -10,24 +10,6 @@ pub struct ChangePassword {
     pub current_password: Password,
 }
 
-#[derive(Debug, ::thiserror::Error)]
-pub enum ChangePasswordError {
-    #[error("invalid current password")]
-    InvalidCurrentPassword,
-
-    #[error("invalid userid: {0}")]
-    InvalidUserId(crate::types::UserId),
-
-    #[error(transparent)]
-    Hash(#[from] crate::port::password_hasher::HashError),
-
-    #[error(transparent)]
-    Repo(crate::port::user_repo::Error),
-
-    #[error(transparent)]
-    Publish(#[from] crate::port::event_publisher::PublishError),
-}
-
 impl Command for ChangePassword {
     type Error = ChangePasswordError;
     type Value = ();
@@ -60,6 +42,24 @@ impl Command for ChangePassword {
 
         Ok(())
     }
+}
+
+#[derive(Debug, ::thiserror::Error)]
+pub enum ChangePasswordError {
+    #[error("invalid current password")]
+    InvalidCurrentPassword,
+
+    #[error("invalid userid: {0}")]
+    InvalidUserId(crate::types::UserId),
+
+    #[error(transparent)]
+    Hash(#[from] crate::port::password_hasher::HashError),
+
+    #[error(transparent)]
+    Repo(crate::port::user_repo::Error),
+
+    #[error(transparent)]
+    Publish(#[from] crate::port::event_publisher::PublishError),
 }
 
 mod impls {
