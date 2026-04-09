@@ -1,6 +1,12 @@
 [workspace]
 resolver = "3"
-members = ["crates/adapter/sqlite","crates/domain/identity", "crates/domain/meme", "crates/domain/user"]
+members = [
+  "crates/adapter/disk_store",
+  "crates/adapter/sqlite",
+  "crates/domain/identity",
+  "crates/domain/meme",
+  "crates/domain/user",
+]
 
 [workspace.dependencies]
 
@@ -16,6 +22,7 @@ paste = { version = "1.0.0" }
 sqlx = { version = "0.8.0" }
 thiserror = { version = "2.0.0" }
 tokio = { version = "1.49.0" }
+tempfile = { version = "3.27.0" }
 
 #########################
 # Security & Encription #
